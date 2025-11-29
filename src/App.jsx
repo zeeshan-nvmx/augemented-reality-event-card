@@ -27,8 +27,14 @@ function App() {
     };
 
     if (checkSupport()) {
-      // Request camera permission
-      navigator.mediaDevices.getUserMedia({ video: true })
+      // Request camera permission (use back camera on mobile)
+      navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'environment',
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        }
+      })
         .then(() => {
           setCameraPermission('granted');
         })

@@ -10,11 +10,8 @@ function AppAdvanced() {
   const sceneRef = useRef(null);
   const qrVideoRef = useRef(null);
 
+  // Initial setup - check support and request permissions
   useEffect(() => {
-    // Capture ref values for cleanup
-    const scene = sceneRef.current;
-    const qrVideo = qrVideoRef.current;
-
     // Suppress cross-origin script errors from A-Frame/AR.js
     const handleGlobalError = (event) => {
       if (event.message === 'Script error.') {
@@ -35,11 +32,8 @@ function AppAdvanced() {
 
     if (checkSupport()) {
       navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-        .then((stream) => {
+        .then(() => {
           setCameraPermission('granted');
-          if (stage === 'qr-scan' && qrVideoRef.current) {
-            qrVideoRef.current.srcObject = stream;
-          }
         })
         .catch((err) => {
           console.error('Camera permission denied:', err);
@@ -94,22 +88,39 @@ function AppAdvanced() {
     }, 1000);
 
     return () => {
-      // Cleanup
       window.removeEventListener('error', handleGlobalError);
+    };
+  }, []);
 
-      if (scene) {
-        const video = scene.querySelector('video');
-        if (video && video.srcObject) {
-          const tracks = video.srcObject.getTracks();
-          tracks.forEach(track => track.stop());
-        }
+  // Handle QR camera stream
+  useEffect(() => {
+    let stream = null;
+    const qrVideo = qrVideoRef.current;
+
+    if (stage === 'qr-scan' && cameraPermission === 'granted' && qrVideo) {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        .then((s) => {
+          stream = s;
+          if (qrVideoRef.current) {
+            qrVideoRef.current.srcObject = stream;
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to start camera for QR scan:', err);
+        });
+    }
+
+    return () => {
+      // Stop camera when leaving QR scan stage
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
       }
       if (qrVideo && qrVideo.srcObject) {
         const tracks = qrVideo.srcObject.getTracks();
         tracks.forEach(track => track.stop());
       }
     };
-  }, [stage]);
+  }, [stage, cameraPermission]);
 
   const handleQRScanned = (data) => {
     console.log('QR Code scanned:', data);
@@ -234,7 +245,7 @@ function AppAdvanced() {
         </div>
         
         <button className="skip-button" onClick={skipQRScan}>
-          Skip QR Scan (Testing)
+          Skip to AR View
         </button>
       </div>
     );
