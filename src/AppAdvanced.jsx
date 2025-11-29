@@ -1,14 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import './AppAdvanced.css';
+import './App.css';
 
 function AppAdvanced() {
-  const [stage, setStage] = useState('qr-scan'); // qr-scan, ar-view
   const [isARSupported, setIsARSupported] = useState(true);
   const [cameraPermission, setCameraPermission] = useState(null);
-  const [qrData, setQrData] = useState(null);
   const [videoError, setVideoError] = useState(false);
   const sceneRef = useRef(null);
-  const qrVideoRef = useRef(null);
 
   // Initial setup - check support and request permissions
   useEffect(() => {
@@ -92,111 +89,6 @@ function AppAdvanced() {
     };
   }, []);
 
-  // Handle QR camera stream
-  useEffect(() => {
-    let stream = null;
-    const qrVideo = qrVideoRef.current;
-
-    if (stage === 'qr-scan' && cameraPermission === 'granted' && qrVideo) {
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-        .then((s) => {
-          stream = s;
-          if (qrVideoRef.current) {
-            qrVideoRef.current.srcObject = stream;
-          }
-        })
-        .catch((err) => {
-          console.error('Failed to start camera for QR scan:', err);
-        });
-    }
-
-    return () => {
-      // Stop camera when leaving QR scan stage
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-      if (qrVideo && qrVideo.srcObject) {
-        const tracks = qrVideo.srcObject.getTracks();
-        tracks.forEach(track => track.stop());
-      }
-    };
-  }, [stage, cameraPermission]);
-
-  const handleQRScanned = (data) => {
-    console.log('QR Code scanned:', data);
-    setQrData(data);
-    
-    // Stop QR camera
-    if (qrVideoRef.current && qrVideoRef.current.srcObject) {
-      const tracks = qrVideoRef.current.srcObject.getTracks();
-      tracks.forEach(track => track.stop());
-    }
-    
-    // Move to AR view
-    setTimeout(() => {
-      setStage('ar-view');
-    }, 500);
-  };
-
-  // Simple QR code scanning using jsQR library
-  useEffect(() => {
-    const startQRScanning = () => {
-      const video = qrVideoRef.current;
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
-
-      const scanQR = () => {
-        if (video.readyState === video.HAVE_ENOUGH_DATA && stage === 'qr-scan') {
-          canvas.height = video.videoHeight;
-          canvas.width = video.videoWidth;
-          context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-          const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-
-          if (window.jsQR) {
-            const code = window.jsQR(imageData.data, imageData.width, imageData.height, {
-              inversionAttempts: "dontInvert",
-            });
-
-            if (code) {
-              handleQRScanned(code.data);
-              return;
-            }
-          }
-        }
-
-        if (stage === 'qr-scan') {
-          requestAnimationFrame(scanQR);
-        }
-      };
-
-      video.addEventListener('loadeddata', () => {
-        scanQR();
-      });
-    };
-
-    if (stage === 'qr-scan' && qrVideoRef.current) {
-      // Load jsQR library
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js';
-      script.async = true;
-      script.onload = () => {
-        startQRScanning();
-      };
-      document.head.appendChild(script);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage]);
-
-  // Skip QR scanning (for testing)
-  const skipQRScan = () => {
-    if (qrVideoRef.current && qrVideoRef.current.srcObject) {
-      const tracks = qrVideoRef.current.srcObject.getTracks();
-      tracks.forEach(track => track.stop());
-    }
-    setStage('ar-view');
-  };
-
   if (!isARSupported) {
     return (
       <div className="error-container">
@@ -224,38 +116,10 @@ function AppAdvanced() {
     );
   }
 
-  if (stage === 'qr-scan') {
-    return (
-      <div className="qr-scan-container">
-        <div className="qr-header">
-          <h2>Scan Invitation QR Code</h2>
-          <p>Point your camera at the QR code on the invitation card</p>
-        </div>
-        
-        <video
-          ref={qrVideoRef}
-          autoPlay
-          playsInline
-          muted
-          className="qr-video"
-        />
-        
-        <div className="qr-overlay">
-          <div className="qr-frame"></div>
-        </div>
-        
-        <button className="skip-button" onClick={skipQRScan}>
-          Skip to AR View
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="App">
       <div className="instructions">
-        <p>Point camera at the Hiro marker</p>
-        {qrData && <small>QR: {qrData.substring(0, 30)}...</small>}
+        <p>Point camera at the invitation card</p>
         {videoError && (
           <small style={{ display: 'block', marginTop: '5px', color: '#ffeb3b' }}>
             ⚠️ Video file missing. Add video to public/invitation-video.mp4
@@ -318,13 +182,6 @@ function AppAdvanced() {
           ></video>
         </a-assets>
       </a-scene>
-
-      <button className="back-button" onClick={() => {
-        setStage('qr-scan');
-        window.location.reload();
-      }}>
-        ← Back
-      </button>
     </div>
   );
 }
