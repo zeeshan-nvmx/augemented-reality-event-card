@@ -29,12 +29,15 @@ a-scene {
   left: 0 !important;
 }
 
-/* Fix AR.js canvas sizing issues on mobile */
+/* Fix AR.js canvas sizing issues on mobile - AGGRESSIVE */
 a-scene canvas,
 a-scene > canvas,
-canvas.a-canvas {
+canvas.a-canvas,
+.a-canvas canvas {
   width: 100vw !important;
   height: 100vh !important;
+  min-width: 100vw !important;
+  min-height: 100vh !important;
   max-width: 100vw !important;
   max-height: 100vh !important;
   position: fixed !important;
@@ -44,6 +47,8 @@ canvas.a-canvas {
   bottom: 0 !important;
   margin: 0 !important;
   padding: 0 !important;
+  display: block !important;
+  transform: none !important;
 }
 
 .a-canvas {

@@ -71,48 +71,92 @@ function AppAdvanced() {
 
     loadScripts();
 
-    // Fix canvas sizing after AR.js loads
-    const fixCanvasSize = () => {
-      setTimeout(() => {
-        const canvas = document.querySelector('canvas.a-canvas');
-        const video = document.querySelector('video.arjs-video');
+    // Fix canvas sizing after AR.js loads - ULTRA AGGRESSIVE for mobile portrait
+    const applyFix = () => {
+      const canvas = document.querySelector('canvas.a-canvas');
+      const video = document.querySelector('video.arjs-video');
+      const container = document.querySelector('.a-canvas');
+      const aScene = document.querySelector('a-scene');
 
-        if (canvas) {
-          canvas.style.width = '100vw';
-          canvas.style.height = '100vh';
-          canvas.style.position = 'fixed';
-          canvas.style.top = '0';
-          canvas.style.left = '0';
-          console.log('Canvas fixed:', canvas.style.width, canvas.style.height);
-        }
+      const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+      const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
 
-        if (video) {
-          video.style.width = '100vw';
-          video.style.height = '100vh';
-          video.style.position = 'fixed';
-          video.style.top = '0';
-          video.style.left = '0';
-          video.style.objectFit = 'cover';
-          console.log('Video fixed:', video.style.width, video.style.height);
-        }
-      }, 2000);
+      console.log('Viewport:', vw, 'x', vh, 'Orientation:', window.orientation || window.screen?.orientation?.angle);
 
-      // Try again after 4 seconds in case it takes longer
-      setTimeout(() => {
-        const canvas = document.querySelector('canvas.a-canvas');
-        const video = document.querySelector('video.arjs-video');
-        if (canvas) {
-          canvas.style.width = '100vw';
-          canvas.style.height = '100vh';
-        }
-        if (video) {
-          video.style.width = '100vw';
-          video.style.height = '100vh';
-        }
-      }, 4000);
+      if (canvas) {
+        // Set CSS properties
+        canvas.style.setProperty('width', vw + 'px', 'important');
+        canvas.style.setProperty('height', vh + 'px', 'important');
+        canvas.style.setProperty('min-width', vw + 'px', 'important');
+        canvas.style.setProperty('min-height', vh + 'px', 'important');
+        canvas.style.setProperty('max-width', vw + 'px', 'important');
+        canvas.style.setProperty('max-height', vh + 'px', 'important');
+        canvas.style.position = 'fixed';
+        canvas.style.top = '0';
+        canvas.style.left = '0';
+        canvas.style.right = '0';
+        canvas.style.bottom = '0';
+        canvas.style.zIndex = '0';
+        canvas.style.display = 'block';
+        canvas.style.margin = '0';
+        canvas.style.padding = '0';
+        canvas.style.transform = 'none';
+
+        // Set actual canvas resolution
+        canvas.width = vw;
+        canvas.height = vh;
+
+        console.log('Canvas fixed:', vw, 'x', vh, '- Canvas actual:', canvas.width, 'x', canvas.height);
+      }
+
+      if (video) {
+        video.style.setProperty('width', vw + 'px', 'important');
+        video.style.setProperty('height', vh + 'px', 'important');
+        video.style.position = 'fixed';
+        video.style.top = '0';
+        video.style.left = '0';
+        video.style.right = '0';
+        video.style.bottom = '0';
+        video.style.objectFit = 'cover';
+        video.style.zIndex = '0';
+        console.log('Video fixed:', vw, 'x', vh);
+      }
+
+      if (container) {
+        container.style.width = vw + 'px';
+        container.style.height = vh + 'px';
+      }
+
+      if (aScene) {
+        aScene.style.width = vw + 'px';
+        aScene.style.height = vh + 'px';
+      }
     };
 
-    fixCanvasSize();
+    // Apply fix on load
+    setTimeout(applyFix, 500);
+    setTimeout(applyFix, 1000);
+    setTimeout(applyFix, 2000);
+    setTimeout(applyFix, 3000);
+    setTimeout(applyFix, 4000);
+
+    // Keep applying periodically for first 15 seconds
+    const interval = setInterval(applyFix, 1000);
+    setTimeout(() => clearInterval(interval), 15000);
+
+    // Apply on resize and orientation change
+    const handleResize = () => {
+      console.log('Window resized or orientation changed');
+      setTimeout(applyFix, 100);
+      setTimeout(applyFix, 500);
+      setTimeout(applyFix, 1000);
+    };
+
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+    if (window.screen?.orientation) {
+      window.screen.orientation.addEventListener('change', handleResize);
+    }
 
     // Set up video error handler
     const handleVideoError = () => {
@@ -130,7 +174,13 @@ function AppAdvanced() {
 
     return () => {
       window.removeEventListener('error', handleGlobalError);
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+      if (window.screen?.orientation) {
+        window.screen.orientation.removeEventListener('change', handleResize);
+      }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Set up marker detection event listeners
@@ -202,9 +252,10 @@ function AppAdvanced() {
       <a-scene
         ref={sceneRef}
         embedded
-        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+        arjs="sourceType: webcam; debugUIEnabled: true; detectionMode: mono_and_matrix; matrixCodeType: 3x3; trackingMethod: best;"
         vr-mode-ui="enabled: false"
-        style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh' }}
+        renderer="logarithmicDepthBuffer: true; precision: medium;"
+        style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 0 }}
       >
         <a-entity camera></a-entity>
 
