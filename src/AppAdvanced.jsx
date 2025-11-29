@@ -5,6 +5,7 @@ function AppAdvanced() {
   const [isARSupported, setIsARSupported] = useState(true);
   const [cameraPermission, setCameraPermission] = useState(null);
   const [videoError, setVideoError] = useState(false);
+  const [markerFound, setMarkerFound] = useState(false);
   const sceneRef = useRef(null);
 
   // Initial setup - check support and request permissions
@@ -70,6 +71,49 @@ function AppAdvanced() {
 
     loadScripts();
 
+    // Fix canvas sizing after AR.js loads
+    const fixCanvasSize = () => {
+      setTimeout(() => {
+        const canvas = document.querySelector('canvas.a-canvas');
+        const video = document.querySelector('video.arjs-video');
+
+        if (canvas) {
+          canvas.style.width = '100vw';
+          canvas.style.height = '100vh';
+          canvas.style.position = 'fixed';
+          canvas.style.top = '0';
+          canvas.style.left = '0';
+          console.log('Canvas fixed:', canvas.style.width, canvas.style.height);
+        }
+
+        if (video) {
+          video.style.width = '100vw';
+          video.style.height = '100vh';
+          video.style.position = 'fixed';
+          video.style.top = '0';
+          video.style.left = '0';
+          video.style.objectFit = 'cover';
+          console.log('Video fixed:', video.style.width, video.style.height);
+        }
+      }, 2000);
+
+      // Try again after 4 seconds in case it takes longer
+      setTimeout(() => {
+        const canvas = document.querySelector('canvas.a-canvas');
+        const video = document.querySelector('video.arjs-video');
+        if (canvas) {
+          canvas.style.width = '100vw';
+          canvas.style.height = '100vh';
+        }
+        if (video) {
+          video.style.width = '100vw';
+          video.style.height = '100vh';
+        }
+      }, 4000);
+    };
+
+    fixCanvasSize();
+
     // Set up video error handler
     const handleVideoError = () => {
       console.warn('Video file not found. Add your video to public/invitation-video.mp4');
@@ -87,6 +131,27 @@ function AppAdvanced() {
     return () => {
       window.removeEventListener('error', handleGlobalError);
     };
+  }, []);
+
+  // Set up marker detection event listeners
+  useEffect(() => {
+    const setupMarkerListeners = () => {
+      setTimeout(() => {
+        const marker = document.querySelector('a-marker');
+        if (marker) {
+          marker.addEventListener('markerFound', () => {
+            console.log('Marker found!');
+            setMarkerFound(true);
+          });
+          marker.addEventListener('markerLost', () => {
+            console.log('Marker lost');
+            setMarkerFound(false);
+          });
+        }
+      }, 2000);
+    };
+
+    setupMarkerListeners();
   }, []);
 
   if (!isARSupported) {
@@ -119,7 +184,14 @@ function AppAdvanced() {
   return (
     <div className="App">
       <div className="instructions">
-        <p>Point camera at the invitation card</p>
+        <p>
+          {markerFound ? '✓ Marker Detected!' : 'Point camera at the invitation card'}
+        </p>
+        {!markerFound && (
+          <small style={{ display: 'block', marginTop: '5px', opacity: 0.8 }}>
+            Looking for marker...
+          </small>
+        )}
         {videoError && (
           <small style={{ display: 'block', marginTop: '5px', color: '#ffeb3b' }}>
             ⚠️ Video file missing. Add video to public/invitation-video.mp4
@@ -132,10 +204,16 @@ function AppAdvanced() {
         embedded
         arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
         vr-mode-ui="enabled: false"
+        style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh' }}
       >
         <a-entity camera></a-entity>
 
-        <a-marker preset="hiro" raycaster="objects: .clickable" emitevents="true">
+        <a-marker
+          preset="hiro"
+          raycaster="objects: .clickable"
+          emitevents="true"
+          cursor="fuse: false; rayOrigin: mouse;"
+        >
           {!videoError && (
             <a-video
               src="#invitation-video"
